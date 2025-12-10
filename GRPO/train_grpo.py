@@ -102,6 +102,8 @@ class GRPOTrainer:
 
             # Algorithm configuration
             "algorithm.adv_estimator=grpo",
+            "reward.type=custom",
+            "reward.custom_class=verl.utils.reward_score.gsm8k_reward.GSM8KReward",
 
             # Data configuration
             f"data.train_files={train_file}",
@@ -116,8 +118,13 @@ class GRPOTrainer:
             f"actor_rollout_ref.model.path={self.model_path}",
             "actor_rollout_ref.model.use_remove_padding=True",
             "actor_rollout_ref.model.enable_gradient_checkpointing=True",
+            "++actor_rollout_ref.model.override_config.attn_implementation=sdpa",
+
 
             # Rollout configuration
+            "actor_rollout_ref.rollout.name=vllm",
+            "actor_rollout_ref.rollout.tensor_model_parallel_size=1",
+            "actor_rollout_ref.rollout.dtype=float16",
             "actor_rollout_ref.rollout.n=4",
             "actor_rollout_ref.rollout.temperature=0.8",
             "actor_rollout_ref.rollout.log_prob_micro_batch_size=4",
