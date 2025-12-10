@@ -46,6 +46,10 @@ news_GRPO/
 ```bash
 uv sync
 ```
+if uv is not installed:
+```
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
 3. Install VERL and apply patches:
 ```bash
