@@ -1,56 +1,131 @@
 # GRPO Training Configuration
-# This file contains default hyperparameters for training with VERL
+# This file contains all training hyperparameters
+# Adjust these settings based on your GPU specifications
 
-# Model configuration
+# ==============================================================================
+# GPU Configuration Presets
+# ==============================================================================
+# Current settings optimized for: Tesla V100 32GB
+#
+# For other GPUs, use these presets:
+#
+# A100 40GB/80GB:
+#   - train_batch_size: 16
+#   - rollout.n: 16
+#   - ppo_mini_batch_size: 32
+#   - gpu_memory_utilization: 0.90
+#
+# RTX 3090 24GB:
+#   - train_batch_size: 4
+#   - rollout.n: 4
+#   - ppo_mini_batch_size: 8
+#   - gpu_memory_utilization: 0.80
+#
+# RTX 4090 24GB:
+#   - train_batch_size: 6
+#   - rollout.n: 6
+#   - ppo_mini_batch_size: 12
+#   - gpu_memory_utilization: 0.85
+# ==============================================================================
+
+# Model Configuration
 model:
-  path: "Qwen/Qwen2.5-0.5B-Instruct"
-  use_remove_padding: true
-  enable_gradient_checkpointing: true
+  path: "Qwen/Qwen2.5-0.5B-Instruct"  # HuggingFace model path
+  use_remove_padding: false  # Set to false for V100 (Flash Attention issue)
+  enable_gradient_checkpointing: true  # Save memory
+  attn_implementation: "sdpa"  # Use SDPA instead of Flash Attention
 
-# Data configuration
+# Data Configuration
 data:
-  train_file: "data/gsm8k/train.parquet"
-  val_file: "data/gsm8k/test.parquet"
-  train_batch_size: 4
-  val_batch_size: 4
-  max_prompt_length: 512
-  max_response_length: 512
-  dataloader_num_workers: 2
+  train_files: "data/gsm8k/train.parquet"
+  val_files: "data/gsm8k/test.parquet"
+  train_batch_size: 8  # Increase for larger GPUs (A100: 16, 3090: 4)
+  val_batch_size: 8
+  max_prompt_length: 512  # Max input sequence length
+  max_response_length: 512  # Max output sequence length
+  dataloader_num_workers: 4  # Parallel data loading (adjust based on CPU cores)
 
-# Training configuration
-training:
+# Rollout Configuration (Generation)
+rollout:
+  name: "vllm"  # Use vLLM for fast inference
+  tensor_model_parallel_size: 1  # Multi-GPU: increase for model parallelism
+  dtype: "float16"  # V100 optimized (use bfloat16 for A100)
+  n: 8  # Number of samples per prompt (A100: 16, 3090: 4)
+  temperature: 0.8  # Sampling temperature for generation
+  log_prob_micro_batch_size: 8  # Batch size for log prob calculation
+  gpu_memory_utilization: 0.85  # Target GPU memory usage (A100: 0.90, 3090: 0.80)
+
+# Actor Training Configuration (Policy Optimization)
+actor:
+  learning_rate: 1.0e-6  # Learning rate for actor model
+  ppo_mini_batch_size: 8  # Total mini-batch size (A100: 32, 3090: 8)
+  ppo_micro_batch_size_per_gpu: 2  # Per-GPU micro-batch (adjust for memory)
+  ppo_epochs: 1  # PPO epochs per batch (GRPO typically uses 1)
+
+# Algorithm Configuration
+algorithm:
+  adv_estimator: "grpo"  # Use GRPO (Group Relative Policy Optimization)
+
+# Reward Function Configuration
+reward:
+  path: "GRPO/gsm8k_reward.py"
+  function_name: "compute_score"
+
+# Training Configuration
+trainer:
+  n_gpus_per_node: 1  # Number of GPUs to use
+  nnodes: 1  # Number of nodes (for distributed training)
+  total_epochs: 3  # Number of training epochs
+  save_freq: 100  # Save checkpoint every N steps
+  val_before_train: false  # Run validation before training starts
+
+  # Optimization settings
+  mixed_precision: "fp16"  # Mixed precision training (fp16 or bf16)
+  max_grad_norm: 1.0  # Gradient clipping threshold
+
+  # Logging
+  logger: ['console']  # Logger types
+  project_name: "qwen-grpo-gsm8k"
   experiment_name: "qwen-grpo-gsm8k"
-  checkpoint_dir: "checkpoints"
-  n_gpus: 1
-  nnodes: 1
-  val_before_train: false
+  default_local_dir: "checkpoints/qwen-grpo-gsm8k"
 
-# GRPO algorithm configuration
-grpo:
-  # Number of response samples per prompt
-  rollout_n: 4
-  # Sampling temperature for generation
-  temperature: 0.8
-  # Learning rate for actor model
-  learning_rate: 1.0e-6
-  # PPO batch sizes
-  ppo_mini_batch_size: 4
-  ppo_micro_batch_size_per_gpu: 4
-  log_prob_micro_batch_size: 4
-
-# Inference configuration
-inference:
-  max_new_tokens: 512
-  temperature: 0.7
-  top_p: 0.9
-
-# Environment configuration
+# Environment Variables
 environment:
   pytorch_alloc_conf: "expandable_segments:True"
   tokenizers_parallelism: "true"
 
-# Notes:
-# - Adjust batch_size and ppo_*_batch_size based on GPU memory
-# - Increase n_gpus for multi-GPU training
-# - Lower temperature for more deterministic outputs
-# - Increase rollout_n for more diverse samples (requires more memory)
+# ==============================================================================
+# Memory Estimation Guide
+# ==============================================================================
+# Estimated memory usage with current settings (V100 32GB):
+# - Model weights (float16): ~1 GB
+# - Gradient checkpointing: ~2-3 GB
+# - vLLM rollout engine: ~8-10 GB
+# - Training batch: ~12-15 GB
+# - Optimizer states: ~2-3 GB
+# Total: ~27-28 GB (85% of 32GB)
+#
+# If you encounter OOM errors:
+# 1. Reduce train_batch_size
+# 2. Reduce rollout.n
+# 3. Reduce ppo_mini_batch_size
+# 4. Reduce max_prompt_length and max_response_length
+# 5. Increase ppo_micro_batch_size_per_gpu (trades speed for memory)
+# ==============================================================================
+
+# ==============================================================================
+# Performance Tuning Tips
+# ==============================================================================
+# For faster training:
+# 1. Increase train_batch_size (limited by GPU memory)
+# 2. Increase rollout.n for better GRPO (more diverse samples)
+# 3. Increase dataloader_num_workers (limited by CPU cores)
+# 4. Use mixed_precision (fp16 or bf16)
+# 5. Enable gradient checkpointing if memory is tight
+#
+# For better model quality:
+# 1. Increase rollout.n (more samples = better policy gradients)
+# 2. Increase total_epochs
+# 3. Tune learning_rate (try 5e-7 to 5e-6)
+# 4. Adjust temperature for generation diversity
+# ==============================================================================

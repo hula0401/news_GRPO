@@ -1,5 +1,78 @@
 # Change Record
 
+## 2025-12-11: Optimized Training Parameters for V100 32GB
+
+Optimized all training hyperparameters to maximize throughput and GPU utilization on Tesla V100 32GB.
+
+### Parameter Changes (train_grpo.py)
+**Data Configuration:**
+- train_batch_size: 4 → 8 (line 34)
+- dataloader_num_workers: 2 → 4 (line 119)
+
+**Rollout Configuration:**
+- rollout.n: 4 → 8 samples per prompt (line 131)
+- log_prob_micro_batch_size: 4 → 8 (line 133)
+- Added gpu_memory_utilization=0.85 for V100 (line 134)
+
+**Actor Training:**
+- ppo_mini_batch_size: 4 → 16 (line 138)
+- ppo_micro_batch_size_per_gpu: 4 → 2 (line 139)
+- Added ppo_epochs=1 for GRPO (line 140)
+
+**Training Settings:**
+- Added save_freq=100 steps (line 152)
+- Added total_epochs=3 (line 153)
+- Added mixed_precision=fp16 (line 156)
+- Added max_grad_norm=1.0 for gradient clipping (line 157)
+
+### Performance Impact
+- **Increased throughput**: 2x more rollout samples (8 vs 4) for better GRPO
+- **Better GPU utilization**: 85% memory target with larger batch sizes
+- **Faster data loading**: 4 workers instead of 2
+- **Memory efficient**: Reduced micro batch size with larger mini batch
+- **Stable training**: Gradient clipping and mixed precision
+
+### V100 Optimization Strategy
+1. Float16 precision (V100 optimized, not bfloat16)
+2. Gradient checkpointing enabled (save memory)
+3. SDPA attention (no Flash Attention compilation)
+4. Larger rollout samples for better policy gradients
+5. Balanced batch sizes to avoid OOM
+
+### Configuration File System
+Enhanced existing config.yaml with comprehensive GPU-specific tuning:
+
+**config.yaml** (updated):
+- Centralized configuration for all training parameters
+- Updated with V100-optimized values (batch_size: 8, rollout.n: 8, etc.)
+- Added GPU-specific presets (V100, A100, RTX 3090/4090)
+- Added memory estimation guide
+- Added performance tuning tips
+- Added reward function configuration
+- Comprehensive comments for each parameter
+
+**train_from_config.py** (new):
+- Loads all settings from config.yaml
+- Validates configuration and data files
+- Builds VERL command from config
+- Displays training summary before starting
+
+**Usage**:
+```bash
+# Use default config.yaml
+uv run GRPO/train_from_config.py
+
+# Or specify custom config
+uv run GRPO/train_from_config.py --config path/to/custom_config.yaml
+```
+
+**Benefits**:
+- Single source of truth for all parameters
+- No code changes needed for different GPUs
+- Easy to version control configurations
+- Quick A/B testing of hyperparameters
+- Clear documentation of training runs
+
 ## 2025-12-09: Initial GRPO Training Platform Setup
 
 Built complete GRPO training platform using VERL framework for Qwen 0.5B model with GSM8K dataset. Platform designed to be extended for news data training on GPU servers.
