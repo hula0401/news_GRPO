@@ -1,10 +1,16 @@
-from verl.utils.reward_score.gsm8k_reward import GSM8KReward
+from GRPO.gsm8k_reward import compute_score
 
-reward_fn = GSM8KReward()
+def main() -> None:
+    """Simple smoke test for the custom GSM8K reward."""
+    solution = "Natalia sold ... #### 72"
+    ground_truth = "72"
+    reward = compute_score(
+        data_source="gsm8k",
+        solution_str=solution,
+        ground_truth=ground_truth,
+        extra_info=None,
+    )
+    print(f"Reward: {reward}")
 
-sample = {
-    "model_output": "I think the answer is 72.\n#### 72",
-    "answer": "72"
-}
-
-print(reward_fn.compute(sample))  # Should print 1.0
+if __name__ == "__main__":
+    main()

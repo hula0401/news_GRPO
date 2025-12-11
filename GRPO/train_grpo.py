@@ -102,8 +102,12 @@ class GRPOTrainer:
 
             # Algorithm configuration
             "algorithm.adv_estimator=grpo",
-            "reward.type=custom",
-            "reward.custom_class=verl.utils.reward_score.gsm8k_reward.GSM8KReward",
+            "custom_reward_function.path=GRPO/gsm8k_reward.py",
+            "custom_reward_function.name=compute_score",
+
+            # Custom reward function integration
+            #"++custom_reward_function.path=GRPO/verl_reward_wrapper.py",
+            #"++custom_reward_function.name=create_gsm8k_reward_fn",
 
             # Data configuration
             f"data.train_files={train_file}",
@@ -116,10 +120,13 @@ class GRPOTrainer:
 
             # Model configuration
             f"actor_rollout_ref.model.path={self.model_path}",
-            "actor_rollout_ref.model.use_remove_padding=True",
+            "actor_rollout_ref.model.use_remove_padding=False", ## flash attn issue
             "actor_rollout_ref.model.enable_gradient_checkpointing=True",
             "++actor_rollout_ref.model.override_config.attn_implementation=sdpa",
 
+            # turn off flash-attn for V100
+            #"actor_rollout_ref.model.disable_flash_attention=True",
+            #"trainer.enable_flash_attn=False",
 
             # Rollout configuration
             "actor_rollout_ref.rollout.name=vllm",
@@ -162,7 +169,7 @@ class GRPOTrainer:
         logger.info(f"Command: {' '.join(cmd)}")
 
         try:
-            result = subprocess.run(
+            subprocess.run(
                 cmd,
                 check=True,
                 text=True,
