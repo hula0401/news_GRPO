@@ -5,32 +5,9 @@
 # ==============================================================================
 # GPU Configuration Presets
 # ==============================================================================
-# Current settings optimized for: Tesla V100 32GB
-#
-# For other GPUs, use these presets:
-#
-# A100 40GB/80GB:
-#   - train_batch_size: 16
-#   - rollout.n: 16
-#   - ppo_mini_batch_size: 32
-#   - gpu_memory_utilization: 0.90
-#
-# RTX 3090 24GB:
-#   - train_batch_size: 4
-#   - rollout.n: 4
-#   - ppo_mini_batch_size: 8
-#   - gpu_memory_utilization: 0.80
-#
-# RTX 4090 24GB:
-#   - train_batch_size: 6
-#   - rollout.n: 6
-#   - ppo_mini_batch_size: 12
-#   - gpu_memory_utilization: 0.85
-# ==============================================================================
-
 # Model Configuration
 model:
-  path: "Qwen/Qwen2.5-0.5B-Instruct"  # HuggingFace model path
+  path: "Qwen/Qwen2.5-1.5B-Instruct"  # HuggingFace model path, "Qwen/Qwen2.5-0.5B-Instruct"
   use_remove_padding: false  # Set to false for V100 (Flash Attention issue)
   enable_gradient_checkpointing: true  # Save memory
   attn_implementation: "sdpa"  # Use SDPA instead of Flash Attention
@@ -39,10 +16,10 @@ model:
 data:
   train_files: "data/gsm8k/train.parquet"
   val_files: "data/gsm8k/val.parquet"  # Validation split from training data
-  train_batch_size: 8  # Increase for larger GPUs (A100: 16, 3090: 4)
-  val_batch_size: 8
+  train_batch_size: 4  # Increase for larger GPUs (A100: 16, 3090: 4)
+  val_batch_size: 1
   max_prompt_length: 512  # Max input sequence length
-  max_response_length: 384  # Max output sequence length
+  max_response_length: 256  # Max output sequence length
   dataloader_num_workers: 4  # Parallel data loading (adjust based on CPU cores)
 
 # Rollout Configuration (Generation)
@@ -52,14 +29,15 @@ rollout:
   dtype: "float16"  # V100 optimized (use bfloat16 for A100)
   n: 4  # Number of samples per prompt (A100: 16, 3090: 4)
   temperature: 0.8  # Sampling temperature for generation
-  log_prob_micro_batch_size: 4 # Batch size for log prob calculation
-  gpu_memory_utilization: 0.80  # Target GPU memory usage (A100: 0.90, 3090: 0.80)
+  do_sample: true # Enable sampling
+  log_prob_micro_batch_size: 2 # Batch size for log prob calculation
+  gpu_memory_utilization: 0.45  # Target GPU memory usage (A100: 0.90, 3090: 0.80)
 
 # Actor Training Configuration (Policy Optimization)
 actor:
   learning_rate: 1.0e-6  # Learning rate for actor model
-  ppo_mini_batch_size: 8  # Total mini-batch size (A100: 32, 3090: 8)
-  ppo_micro_batch_size_per_gpu: 2  # Per-GPU micro-batch (adjust for memory)
+  ppo_mini_batch_size: 1  # Total mini-batch size (A100: 32, 3090: 8)
+  ppo_micro_batch_size_per_gpu: 1  # Per-GPU micro-batch (adjust for memory)
   ppo_epochs: 1  # PPO epochs per batch (GRPO typically uses 1)
 
 # Algorithm Configuration
@@ -68,7 +46,7 @@ algorithm:
 
 # Reward Function Configuration
 reward:
-  path: "GRPO/gsm8k_reward.py"
+  path: "GRPO/gsm8k_reward_partial.py" #"GRPO/gsm8k_reward_partial.py"
   function_name: "compute_score"
 
 # Training Configuration
@@ -76,11 +54,11 @@ trainer:
   n_gpus_per_node: 1  # Number of GPUs to use
   nnodes: 1  # Number of nodes (for distributed training)
   total_epochs: 3  # Number of training epochs
-  save_freq: 100  # Save checkpoint every N steps
+  save_freq: 0  # Save checkpoint every N steps
 
   # Validation settings
-  val_before_train: true  # Run validation before training starts
-  val_interval: 100  # Run validation every N steps
+  val_before_train: false  # Run validation before training starts
+  val_interval: 0  # Run validation every N steps
 
   # Optimization settings
   mixed_precision: "fp16"  # Mixed precision training (fp16 or bf16)
@@ -97,8 +75,8 @@ trainer:
     enabled: true
     project: "qwen-grpo-gsm8k"
     entity: ~  # Set your wandb username/team here
-    tags: ["grpo", "gsm8k", "qwen-0.5b", "v100"]
-    notes: "GRPO training on GSM8K with Qwen 0.5B"
+    tags: ["grpo", "gsm8k", "qwen3-4b", "v100"]
+    notes: "GRPO training on GSM8K with Qwen3 4B"
     # Key metrics to monitor:
     # - critic/score/mean: Model correctness (training objective)
     # - critic/rewards/mean: Whether reward is being learned
@@ -112,39 +90,3 @@ trainer:
 environment:
   pytorch_alloc_conf: "expandable_segments:True"
   tokenizers_parallelism: "true"
-
-# ==============================================================================
-# Memory Estimation Guide
-# ==============================================================================
-# Estimated memory usage with current settings (V100 32GB):
-# - Model weights (float16): ~1 GB
-# - Gradient checkpointing: ~2-3 GB
-# - vLLM rollout engine: ~8-10 GB
-# - Training batch: ~12-15 GB
-# - Optimizer states: ~2-3 GB
-# Total: ~27-28 GB (85% of 32GB)
-#
-# If you encounter OOM errors:
-# 1. Reduce train_batch_size
-# 2. Reduce rollout.n
-# 3. Reduce ppo_mini_batch_size
-# 4. Reduce max_prompt_length and max_response_length
-# 5. Increase ppo_micro_batch_size_per_gpu (trades speed for memory)
-# ==============================================================================
-
-# ==============================================================================
-# Performance Tuning Tips
-# ==============================================================================
-# For faster training:
-# 1. Increase train_batch_size (limited by GPU memory)
-# 2. Increase rollout.n for better GRPO (more diverse samples)
-# 3. Increase dataloader_num_workers (limited by CPU cores)
-# 4. Use mixed_precision (fp16 or bf16)
-# 5. Enable gradient checkpointing if memory is tight
-#
-# For better model quality:
-# 1. Increase rollout.n (more samples = better policy gradients)
-# 2. Increase total_epochs
-# 3. Tune learning_rate (try 5e-7 to 5e-6)
-# 4. Adjust temperature for generation diversity
-# ==============================================================================

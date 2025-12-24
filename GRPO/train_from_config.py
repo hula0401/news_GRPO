@@ -81,6 +81,7 @@ def build_training_command(config: dict) -> list[str]:
         f"actor_rollout_ref.rollout.dtype={rollout_cfg['dtype']}",
         f"actor_rollout_ref.rollout.n={rollout_cfg['n']}",
         f"actor_rollout_ref.rollout.temperature={rollout_cfg['temperature']}",
+        f"actor_rollout_ref.rollout.do_sample={str(rollout_cfg['do_sample']).lower()}",
         f"actor_rollout_ref.rollout.log_prob_micro_batch_size={rollout_cfg['log_prob_micro_batch_size']}",
         f"actor_rollout_ref.rollout.gpu_memory_utilization={rollout_cfg['gpu_memory_utilization']}",
 
