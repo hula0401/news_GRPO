@@ -33,6 +33,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Log file path (absolute to work with Ray workers)
+import pathlib
+_log_file_path = str(pathlib.Path.cwd() / "reward_samples.log")
+
 # Sampling configuration - log every Nth question to avoid spam
 _LOG_SAMPLE_RATE = int(os.getenv("REWARD_LOG_SAMPLE_RATE", "25"))  # Default: log every 25 questions
 _ENABLE_LOGGING = os.getenv("REWARD_ENABLE_LOGGING", "true").lower() == "true"
@@ -73,7 +77,7 @@ def correctness_reward_component(response: str, answer: str) -> float:
     response :
         Model-generated response
     answer :
-        Ground truth answer
+        Ground truth answer (GSM8K format with #### marker)
 
     Returns
     -------
@@ -81,17 +85,27 @@ def correctness_reward_component(response: str, answer: str) -> float:
         Reward in [0.0, 2.0]
     """
     extracted_response = extract_answer(response)
+    
+    # Extract ground truth answer from GSM8K format (after ####)
+    ground_truth_answer = answer
+    if '####' in answer:
+        ground_truth_answer = answer.split('####')[-1].strip()
+    
+    # Clean both answers for comparison
+    extracted_response_clean = extracted_response.strip()
+    ground_truth_clean = ground_truth_answer.strip()
 
-    if extracted_response == str(answer):
+    if extracted_response_clean == ground_truth_clean:
         return 2.0
 
     # Try to extract numeric value and give partial credit
     try:
         # Extract numbers from response
-        numbers = re.findall(r'\d+', extracted_response)
-        if numbers:
-            response_num = int(numbers[0])
-            ans_num = int(answer)
+        numbers = re.findall(r'-?\d+\.?\d*', extracted_response_clean)
+        gt_numbers = re.findall(r'-?\d+\.?\d*', ground_truth_clean)
+        if numbers and gt_numbers:
+            response_num = float(numbers[-1])  # Use last number
+            ans_num = float(gt_numbers[-1])
             # Give partial credit based on how close the answer is
             distance = abs(response_num - ans_num)
             if distance == 0:
@@ -240,6 +254,14 @@ def compute_score(
     """
     global _call_counter
     _call_counter += 1
+    
+    # Debug: Write simple counter to verify function is called
+    try:
+        with open(_log_file_path + ".counter", "a") as f:
+            f.write(f"Call #{_call_counter}\n")
+            f.flush()
+    except:
+        pass
 
     _ = data_source
 
@@ -252,45 +274,52 @@ def compute_score(
     # Combine with equal weights (all weights = 1.0 in original implementation)
     total_reward = correctness + digit + hard_format + mark
 
-    # Log sample outputs periodically for monitoring (every 25 questions)
+    # Log sample outputs periodically for monitoring (every N questions)
     if _ENABLE_LOGGING and _call_counter % _LOG_SAMPLE_RATE == 0:
         extracted = extract_answer(solution_str)
 
-        # Extract question from extra_info if available
-        question = ""
-        if extra_info and isinstance(extra_info, dict):
-            question = extra_info.get('question', '')
-
-        # Truncate long outputs for logging
+        # Truncate long outputs for logging  
         display_output = solution_str[:500] + "..." if len(solution_str) > 500 else solution_str
-        display_question = question[:200] + "..." if len(question) > 200 else question
 
-        logger.info("=" * 100)
-        logger.info(f"📊 ROLLOUT SAMPLE #{_call_counter // _LOG_SAMPLE_RATE} (Call #{_call_counter})")
-        logger.info("=" * 100)
-        logger.info("")
-        logger.info(f"❓ QUESTION:")
-        logger.info(f"   {display_question}")
-        logger.info("")
-        logger.info(f"✓ GROUND TRUTH:")
-        logger.info(f"   {ground_truth}")
-        logger.info("")
-        logger.info(f"🤖 MODEL ANSWER:")
-        logger.info(f"   {extracted}")
-        logger.info(f"   {'✓ CORRECT' if extracted == str(ground_truth) else '✗ INCORRECT'}")
-        logger.info("")
-        logger.info("-" * 100)
-        logger.info(f"📈 REWARD BREAKDOWN:")
-        logger.info(f"   • Correctness:  {correctness:5.2f} / 2.00  {'✓' if correctness >= 2.0 else '✗'}")
-        logger.info(f"   • Digit:        {digit:5.2f} / 0.50  {'✓' if digit >= 0.3 else '○'}")
-        logger.info(f"   • Format:       {hard_format:5.2f} / 0.60  {'✓' if hard_format >= 0.5 else '○'}")
-        logger.info(f"   • Mark:         {mark:5.2f} / 0.50  {'✓' if mark >= 0.4 else '○'}")
-        logger.info(f"   • TOTAL REWARD: {total_reward:5.2f} / 3.60")
-        logger.info("-" * 100)
-        logger.info(f"📝 FULL MODEL OUTPUT:")
-        logger.info(display_output)
-        logger.info("=" * 100)
-        logger.info("")
+        # Format the log message (simplified - no question since it's not in extra_info by default)
+        log_msg = f"""
+{"=" * 100}
+📊 ROLLOUT SAMPLE #{_call_counter // _LOG_SAMPLE_RATE} (Call #{_call_counter})
+{"=" * 100}
+
+✓ GROUND TRUTH: {ground_truth}
+
+🤖 MODEL ANSWER: {extracted}  {'✓ CORRECT' if extracted == str(ground_truth) else '✗ INCORRECT'}
+
+{"-" * 100}
+📈 REWARD BREAKDOWN:
+   • Correctness:  {correctness:5.2f} / 2.00  {'✓' if correctness >= 2.0 else '✗'}
+   • Digit:        {digit:5.2f} / 0.50  {'✓' if digit >= 0.3 else '○'}
+   • Format:       {hard_format:5.2f} / 0.60  {'✓' if hard_format >= 0.5 else '○'}
+   • Mark:         {mark:5.2f} / 0.50  {'✓' if mark >= 0.4 else '○'}
+   • TOTAL REWARD: {total_reward:5.2f} / 3.60
+{"-" * 100}
+📝 FULL MODEL OUTPUT:
+{display_output}
+{"=" * 100}
+
+"""
+        
+        # Write to file directly (works better with Ray)
+        try:
+            with open(_log_file_path, "a") as f:
+                f.write(log_msg)
+                f.flush()
+        except Exception as e:
+            # Try to log the error via print
+            try:
+                import sys
+                print(f"[REWARD LOG ERROR] {e}", file=sys.stderr, flush=True)
+            except:
+                pass
+        
+        # Also print to stdout (Ray might capture this)
+        print(log_msg, flush=True)
 
         # Also try to import wandb and log there if available
         try:

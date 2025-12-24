@@ -11,10 +11,10 @@ model:
 
 # Data Configuration - Small test dataset
 data:
-  train_files: "data/gsm8k/train.parquet"  # 50 samples
-  val_files: "data/gsm8k/val.parquet"      # 10 samples
-  train_batch_size: 2  # Smaller batch for faster testing
-  val_batch_size: 1
+  train_files: "data/gsm8k/train_sample.parquet"  # 50 samples
+  val_files: "data/gsm8k/val_sample.parquet"      # 10 samples
+  train_batch_size: 4  # Must be >= ppo_mini_batch_size
+  val_batch_size: 4
   max_prompt_length: 512
   max_response_length: 256
   dataloader_num_workers: 2  # Reduced for test
@@ -23,8 +23,8 @@ data:
 rollout:
   name: "vllm"
   tensor_model_parallel_size: 1
-  dtype: "float16"
-  n: 4  # Keep same for testing
+  dtype: "bfloat16"
+  n: 8  # Keep same for testing
   temperature: 0.8
   do_sample: true
   log_prob_micro_batch_size: 2
@@ -33,7 +33,7 @@ rollout:
 # Actor Training Configuration
 actor:
   learning_rate: 1.0e-6
-  ppo_mini_batch_size: 1
+  ppo_mini_batch_size: 4
   ppo_micro_batch_size_per_gpu: 1
   ppo_epochs: 1
 
@@ -53,31 +53,39 @@ trainer:
   total_epochs: 1  # Only 1 epoch for testing
   save_freq: 0  # Disable checkpointing for test
 
-  val_before_train: false
-  val_interval: 0
+  val_before_train: true
+  val_interval: 5
+  
+  # Pass@k validation plugin (runs in background, logs to wandb)
+  validation:
+    enabled: true  # Enable validation plugin
+    interval: 5  # Run pass@k validation every N steps
+    reward_log: "reward_samples.log"  # Path to reward samples log
+    training_log: "training.log"  # Path to training log
+    log_dir: "validation_logs"  # Directory to save validation logs
+    check_interval: 30  # Check for new steps every N seconds
 
   mixed_precision: "fp16"
   max_grad_norm: 1.0
 
   # Logging
-  logger: ['console']  # Console only for quick testing
+  logger: ['console', 'wandb']  # Console and wandb for monitoring
   project_name: "qwen-grpo-test"
-  experiment_name: "qwen-grpo-test-run"
+  experiment_name: "qwen-grpo-test"  # Timestamp will be added automatically
   default_local_dir: "checkpoints/test"
 
-  # Wandb disabled by default for testing
-  # To enable: set WANDB_API_KEY and add 'wandb' to logger list above
+  # Wandb configuration (automatically enabled if WANDB_API_KEY is set)
   wandb:
-    enabled: false
+    enabled: true
     project: "qwen-grpo-test"
     entity: ~
     tags: ["test", "grpo", "gsm8k", "v100"]
-    notes: "Test run with 50 samples to validate training loop"
+    notes: "Test run with reward logging every 5 samples"
 
 # Environment Variables
 environment:
   pytorch_alloc_conf: "expandable_segments:True"
   tokenizers_parallelism: "true"
   # Reward logging configuration
-  reward_log_sample_rate: "25"  # Log every 25 questions for monitoring
+  reward_log_sample_rate: "5"  # Log every 5 questions for monitoring
   reward_enable_logging: "true"  # Enable detailed logging of samples

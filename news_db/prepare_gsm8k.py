@@ -6,9 +6,14 @@ Data is formatted according to VERL requirements and saved in parquet format.
 """
 
 import os
+import sys
 import logging
 from pathlib import Path
 from datasets import load_dataset
+
+# Add parent directory to path to import prompts
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from GRPO.prompts import get_gsm8k_prompt
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def format_gsm8k_example(example: dict, idx: int, split: str) -> dict:
+def format_gsm8k_example(example: dict, idx: int, split: str, prompt_format: str = "grpo") -> dict:
     """
     Format a single GSM8K example for GRPO training.
 
@@ -25,19 +30,23 @@ def format_gsm8k_example(example: dict, idx: int, split: str) -> dict:
         example: Raw dataset example containing 'question' and 'answer'
         idx: Index of the example
         split: Dataset split ('train' or 'test')
+        prompt_format: Format type for the prompt ('grpo', 'partial', or 'default')
 
     Returns:
         Formatted example with prompt and reward model configuration
     """
-    instruction = (
-        f"{example['question']}\n"
-        "Answer the above math problem. "
-        "Think step by step. Output the final answer after ####."
-    )
+    # Get the system instruction based on format type
+    system_instruction = get_gsm8k_prompt(prompt_format)
+    
+    # Create prompt with system message and user question (cleaner separation)
+    prompt_messages = [
+        {"role": "system", "content": system_instruction},
+        {"role": "user", "content": example['question']}
+    ]
 
     return {
         "data_source": "gsm8k",
-        "prompt": [{"role": "user", "content": instruction}],
+        "prompt": prompt_messages,
         "ability": "math",
         "reward_model": {
             "style": "rule",
@@ -52,7 +61,8 @@ def format_gsm8k_example(example: dict, idx: int, split: str) -> dict:
 
 def prepare_gsm8k_dataset(
     output_dir: str = "data/gsm8k",
-    val_split_ratio: float = 0.1
+    val_split_ratio: float = 0.1,
+    prompt_format: str = "grpo"
 ) -> None:
     """
     Download and prepare GSM8K dataset for GRPO training.
@@ -63,6 +73,7 @@ def prepare_gsm8k_dataset(
     Args:
         output_dir: Directory to save prepared dataset files
         val_split_ratio: Ratio of training data to use for validation (default: 0.1)
+        prompt_format: Format type for prompts ('grpo', 'partial', or 'default')
     """
     logger.info("Starting GSM8K dataset preparation")
 
@@ -79,23 +90,23 @@ def prepare_gsm8k_dataset(
         seed=42
     )
 
-    logger.info("Formatting training split")
+    logger.info(f"Formatting training split with prompt format: {prompt_format}")
     train_dataset = train_val_split["train"].map(
-        lambda x, i: format_gsm8k_example(x, i, "train"),
+        lambda x, i: format_gsm8k_example(x, i, "train", prompt_format),
         with_indices=True,
         desc="Formatting train examples"
     )
 
     logger.info("Formatting validation split")
     val_dataset = train_val_split["test"].map(
-        lambda x, i: format_gsm8k_example(x, i, "val"),
+        lambda x, i: format_gsm8k_example(x, i, "val", prompt_format),
         with_indices=True,
         desc="Formatting val examples"
     )
 
     logger.info("Formatting test split")
     test_dataset = dataset["test"].map(
-        lambda x, i: format_gsm8k_example(x, i, "test"),
+        lambda x, i: format_gsm8k_example(x, i, "test", prompt_format),
         with_indices=True,
         desc="Formatting test examples"
     )
@@ -123,4 +134,36 @@ def prepare_gsm8k_dataset(
 
 
 if __name__ == "__main__":
-    prepare_gsm8k_dataset()
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Prepare GSM8K dataset with configurable prompt format")
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="data/gsm8k",
+        help="Directory to save prepared dataset files"
+    )
+    parser.add_argument(
+        "--val-split-ratio",
+        type=float,
+        default=0.1,
+        help="Ratio of training data to use for validation"
+    )
+    parser.add_argument(
+        "--prompt-format",
+        type=str,
+        default="grpo",
+        choices=["grpo", "partial", "default"],
+        help="Format type for prompts (grpo=XML format, partial=#### format)"
+    )
+    
+    args = parser.parse_args()
+    
+    logger.info(f"Preparing dataset with prompt format: {args.prompt_format}")
+    logger.info(f"Prompt template:\n{get_gsm8k_prompt(args.prompt_format)}\n")
+    
+    prepare_gsm8k_dataset(
+        output_dir=args.output_dir,
+        val_split_ratio=args.val_split_ratio,
+        prompt_format=args.prompt_format
+    )

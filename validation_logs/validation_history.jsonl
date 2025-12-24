@@ -1,0 +1,1 @@
+{"n_samples": 209, "n_questions": 10, "accuracy": 0.07177033492822966, "pass@1": 0.2, "pass@5": 0.2529826850094877, "correct_samples": 15, "avg_samples_per_question": 20.9, "step": 5}

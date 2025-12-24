@@ -26,7 +26,7 @@ data:
 rollout:
   name: "vllm"  # Use vLLM for fast inference
   tensor_model_parallel_size: 1  # Multi-GPU: increase for model parallelism
-  dtype: "float16"  # V100 optimized (use bfloat16 for A100)
+  dtype: "bfloat16"  # V100 optimized (use bfloat16 for A100)
   n: 4  # Number of samples per prompt (A100: 16, 3090: 4)
   temperature: 0.8  # Sampling temperature for generation
   do_sample: true # Enable sampling
@@ -59,6 +59,15 @@ trainer:
   # Validation settings
   val_before_train: false  # Run validation before training starts
   val_interval: 0  # Run validation every N steps
+  
+  # Pass@k validation plugin (runs in background, logs to wandb)
+  validation:
+    enabled: true  # Enable validation plugin
+    interval: 5  # Run pass@k validation every N steps
+    reward_log: "reward_samples.log"  # Path to reward samples log
+    training_log: "training.log"  # Path to training log
+    log_dir: "validation_logs"  # Directory to save validation logs
+    check_interval: 30  # Check for new steps every N seconds
 
   # Optimization settings
   mixed_precision: "fp16"  # Mixed precision training (fp16 or bf16)
@@ -67,7 +76,7 @@ trainer:
   # Logging
   logger: ['console', 'wandb']  # Logger types (console and wandb)
   project_name: "qwen-grpo-gsm8k"
-  experiment_name: "qwen-grpo-gsm8k"
+  experiment_name: "qwen-grpo-gsm8k"  # Timestamp will be added automatically (e.g., qwen-grpo-gsm8k-Dec241255)
   default_local_dir: "checkpoints/qwen-grpo-gsm8k"
 
   # Wandb configuration

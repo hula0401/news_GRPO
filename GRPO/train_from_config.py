@@ -8,10 +8,20 @@ import os
 import sys
 import logging
 import argparse
+import signal
 from pathlib import Path
 import subprocess
 import yaml
+from datetime import datetime
 from dotenv import load_dotenv
+
+# Import validation plugin
+try:
+    from validation_plugin import create_validation_plugin
+    VALIDATION_AVAILABLE = True
+except ImportError:
+    VALIDATION_AVAILABLE = False
+    print("Warning: validation_plugin not available")
 
 # Load environment variables from .env file
 load_dotenv()
@@ -175,6 +185,18 @@ def main():
     logger.info(f"Loading configuration from: {args.config}")
     config = load_config(args.config)
 
+    # Add timestamp to experiment name for uniqueness
+    timestamp = datetime.now().strftime("%b%d%H%M")  # e.g., Dec241255
+    original_name = config['trainer']['experiment_name']
+    timestamped_name = f"{original_name}-{timestamp}"
+    config['trainer']['experiment_name'] = timestamped_name
+    
+    # Update checkpoint directory with timestamp
+    original_dir = config['trainer']['default_local_dir']
+    config['trainer']['default_local_dir'] = f"{original_dir}-{timestamp}"
+    
+    logger.info(f"Experiment name: {timestamped_name}")
+
     # Check for wandb API key in environment
     wandb_api_key = os.getenv("WANDB_API_KEY")
     if wandb_api_key:
@@ -219,15 +241,51 @@ def main():
     logger.info(f"  - Total epochs: {config['trainer']['total_epochs']}")
     logger.info("=" * 70)
 
-    # Execute training
+    # Initialize validation plugin
+    validation_plugin = None
+    if VALIDATION_AVAILABLE:
+        try:
+            validation_plugin = create_validation_plugin(config)
+            if validation_plugin:
+                validation_plugin.start()
+                logger.info("=" * 70)
+        except Exception as e:
+            logger.warning(f"Could not start validation plugin: {e}")
+            validation_plugin = None
+    
+    # Setup signal handlers for graceful shutdown
+    def signal_handler(signum, frame):
+        logger.info(f"Received signal {signum}, shutting down...")
+        if validation_plugin:
+            validation_plugin.stop()
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    # Execute training (redirect to log file for validation plugin monitoring)
+    training_log_file = Path("training.log")
     try:
-        subprocess.run(
-            cmd,
-            check=True,
-            text=True,
-            stdout=sys.stdout,
-            stderr=sys.stderr
-        )
+        with open(training_log_file, 'w') as log_f:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,  # Line buffered
+                universal_newlines=True
+            )
+            
+            # Read output and write to both console and file
+            for line in process.stdout:
+                print(line, end='')  # Print to console
+                log_f.write(line)    # Write to file
+                log_f.flush()        # Ensure it's written immediately
+            
+            process.wait()
+            
+            if process.returncode != 0:
+                raise subprocess.CalledProcessError(process.returncode, cmd)
         logger.info("Training completed successfully")
     except subprocess.CalledProcessError as e:
         logger.error(f"Training failed with error: {e}")
@@ -235,6 +293,10 @@ def main():
     except KeyboardInterrupt:
         logger.info("Training interrupted by user")
         raise
+    finally:
+        # Stop validation plugin
+        if validation_plugin:
+            validation_plugin.stop()
 
 
 if __name__ == "__main__":
