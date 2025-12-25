@@ -275,19 +275,16 @@ def analyze_log(log_file: Path = Path("reward_samples.log")) -> Dict:
 
 
 def print_metrics(metrics: Dict):
-    """Print metrics in a nice format."""
+    """Print metrics in a nice format (pass@1 and pass@5 only)."""
     print()
     print("=" * 70)
     print("VALIDATION METRICS")
     print("=" * 70)
-    print(f"Samples:     {metrics['n_samples']}")
-    print(f"Questions:   {metrics['n_questions']}")
-    print(f"Avg samples/question: {metrics['avg_samples_per_question']:.1f}")
-    print()
-    print(f"Accuracy:    {metrics['accuracy']:.4f} ({metrics['accuracy']*100:.2f}%)")
     print(f"pass@1:      {metrics['pass@1']:.4f} ({metrics['pass@1']*100:.2f}%)")
     print(f"pass@5:      {metrics['pass@5']:.4f} ({metrics['pass@5']*100:.2f}%)")
-    print(f"Correct:     {metrics['correct_samples']}/{metrics['n_samples']}")
+    print()
+    print(f"Questions:   {metrics['n_questions']}")
+    print(f"Samples:     {metrics['n_samples']}")
     print("=" * 70)
     print()
 

@@ -110,9 +110,9 @@ def correctness_reward_component(response: str, answer: str) -> float:
             distance = abs(response_num - ans_num)
             if distance == 0:
                 return 2.0
-            elif distance <= 5:
+            elif distance <= 0.1:
                 return 1.0
-            elif distance <= 10:
+            elif distance <= 1:
                 return 0.5
             else:
                 return 0.0

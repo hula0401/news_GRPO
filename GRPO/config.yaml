@@ -10,7 +10,8 @@ model:
   path: "Qwen/Qwen2.5-1.5B-Instruct"  # HuggingFace model path, "Qwen/Qwen2.5-0.5B-Instruct"
   use_remove_padding: true  # Enable for Flash Attention 2 (A100/H100 recommended)
   enable_gradient_checkpointing: true  # Save memory
-  attn_implementation: "flash_attention_2"  # Use Flash Attention 2 for better performance
+  attn_implementation: "flash_attention_2"
+  dtype: "bfloat16"  # Load model in bfloat16 for Flash Attention 2 compatibility
 
 # Data Configuration
 data:

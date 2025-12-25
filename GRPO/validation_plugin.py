@@ -131,23 +131,9 @@ class ValidationPlugin:
         # Save to file
         self._save_metrics(metrics)
         
-        # Log to wandb
+        # Log to wandb (only pass@1 and pass@5)
         if self.enable_wandb:
-            try:
-                if wandb.run is not None:
-                    wandb.log({
-                        'val/pass@1': metrics['pass@1'],
-                        'val/pass@5': metrics['pass@5'],
-                        'val/accuracy': metrics['accuracy'],
-                        'val/n_questions': metrics['n_questions'],
-                        'val/n_samples': metrics['n_samples'],
-                        'val/correct_samples': metrics['correct_samples'],
-                    }, step=step)
-                    logger.info("✓ Logged to wandb")
-                else:
-                    logger.debug("wandb.run is None, skipping wandb logging")
-            except Exception as e:
-                logger.warning(f"Could not log to wandb: {e}")
+            self._log_to_wandb(metrics, step)
         
         return metrics
     
@@ -157,6 +143,98 @@ class ValidationPlugin:
         
         with open(self.metrics_file, 'a') as f:
             f.write(json.dumps(metrics) + '\n')
+    
+    def _log_to_wandb(self, metrics: Dict[str, Any], step: int):
+        """
+        Log metrics to wandb using the API to attach to existing run.
+        This works around the issue of wandb.run being None in a different process.
+        """
+        try:
+            # First, try to use the existing wandb run if available
+            if wandb.run is not None:
+                wandb.log({
+                    'val/pass@1': metrics['pass@1'],
+                    'val/pass@5': metrics['pass@5'],
+                }, step=step)
+                logger.info("✓ Logged pass@1 and pass@5 to wandb")
+                return
+            
+            # If wandb.run is None, try to find and attach to the existing run
+            import glob
+            wandb_dirs = glob.glob("wandb/run-*")
+            
+            if not wandb_dirs:
+                logger.debug("No wandb run directory found, skipping")
+                return
+            
+            # Get the most recent wandb run directory
+            latest_wandb_dir = max(wandb_dirs, key=lambda x: Path(x).stat().st_mtime)
+            
+            # Try to read the run ID from the directory
+            run_id = latest_wandb_dir.split("-")[-1]
+            
+            # Use wandb API to log to the existing run
+            from pathlib import Path
+            import os
+            
+            # Get project name from wandb directory metadata
+            wandb_metadata = Path(latest_wandb_dir) / "files" / "wandb-metadata.json"
+            if wandb_metadata.exists():
+                import json
+                with open(wandb_metadata, 'r') as f:
+                    metadata = json.load(f)
+                    project = metadata.get('project', 'qwen-grpo-test')
+                    entity = metadata.get('entity')
+                    
+                # Use wandb API to log metrics
+                api = wandb.Api()
+                if entity:
+                    run_path = f"{entity}/{project}/{run_id}"
+                else:
+                    # Try to get entity from wandb settings
+                    run_path = f"{project}/{run_id}"
+                
+                try:
+                    run = api.run(run_path)
+                    # Log the metrics using the history API
+                    run.history._data.append({
+                        'val/pass@1': metrics['pass@1'],
+                        'val/pass@5': metrics['pass@5'],
+                        '_step': step
+                    })
+                    run.history.save()
+                    logger.info(f"✓ Logged pass@1 and pass@5 to wandb run {run_id}")
+                except Exception as e:
+                    logger.debug(f"Could not log via API: {e}")
+                    # Fall back to file-based logging
+                    self._log_to_wandb_file(metrics, step, latest_wandb_dir)
+            else:
+                logger.debug("Could not find wandb metadata, skipping")
+                
+        except Exception as e:
+            logger.warning(f"Could not log to wandb: {e}")
+    
+    def _log_to_wandb_file(self, metrics: Dict[str, Any], step: int, wandb_dir: str):
+        """Log metrics by directly writing to wandb's internal log file."""
+        try:
+            import json
+            
+            # Write to wandb's history file
+            history_file = Path(wandb_dir) / "files" / "wandb-history.jsonl"
+            
+            with open(history_file, 'a') as f:
+                entry = {
+                    'val/pass@1': metrics['pass@1'],
+                    'val/pass@5': metrics['pass@5'],
+                    '_step': step,
+                    '_timestamp': time.time()
+                }
+                f.write(json.dumps(entry) + '\n')
+            
+            logger.info(f"✓ Logged pass@1 and pass@5 to wandb file")
+            
+        except Exception as e:
+            logger.debug(f"Could not write to wandb file: {e}")
     
     def _monitoring_loop(self):
         """Main monitoring loop that runs in background thread."""

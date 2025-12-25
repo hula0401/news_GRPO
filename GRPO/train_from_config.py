@@ -15,6 +15,14 @@ import yaml
 from datetime import datetime
 from dotenv import load_dotenv
 
+# Import wandb for validation logging
+try:
+    import wandb
+    WANDB_AVAILABLE = True
+except ImportError:
+    WANDB_AVAILABLE = False
+    print("Warning: wandb not available for validation logging")
+
 # Import validation plugin
 try:
     from validation_plugin import create_validation_plugin
@@ -90,6 +98,7 @@ def build_training_command(config: dict) -> list[str]:
         f"actor_rollout_ref.model.use_remove_padding={str(model_cfg['use_remove_padding']).lower()}",
         f"actor_rollout_ref.model.enable_gradient_checkpointing={str(model_cfg['enable_gradient_checkpointing']).lower()}",
         f"++actor_rollout_ref.model.override_config.attn_implementation={model_cfg['attn_implementation']}",
+        f"++actor_rollout_ref.model.override_config.torch_dtype={model_cfg.get('dtype', 'bfloat16')}",
 
         # Rollout configuration
         f"actor_rollout_ref.rollout.name={rollout_cfg['name']}",
