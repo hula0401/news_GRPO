@@ -5,3 +5,6 @@
 {"n_samples": 298, "n_questions": 10, "accuracy": 0.0738255033557047, "pass@1": 0.0, "pass@5": 0.34011389164827627, "correct_samples": 22, "avg_samples_per_question": 29.8, "step": 10}
 {"n_samples": 712, "n_questions": 10, "accuracy": 0.07303370786516854, "pass@1": 0.0, "pass@5": 0.5389781851522248, "correct_samples": 52, "avg_samples_per_question": 71.2, "step": 10}
 {"n_samples": 924, "n_questions": 10, "accuracy": 0.07034632034632035, "pass@1": 0.0, "pass@5": 0.6841397038706638, "correct_samples": 65, "avg_samples_per_question": 92.4, "step": 10}
+{"n_samples": 965, "n_questions": 10, "accuracy": 0.06839378238341969, "pass@1": 0.0, "pass@5": 0.7660073168938825, "correct_samples": 66, "avg_samples_per_question": 96.5, "step": 5}
+{"n_samples": 997, "n_questions": 10, "accuracy": 0.06820461384152457, "pass@1": 0.0, "pass@5": 0.8464649313003333, "correct_samples": 68, "avg_samples_per_question": 99.7, "step": 10}
+{"n_samples": 1005, "n_questions": 10, "accuracy": 0.06865671641791045, "pass@1": 0.0, "pass@5": 0.8464649313003333, "correct_samples": 69, "avg_samples_per_question": 100.5, "step": "final"}
