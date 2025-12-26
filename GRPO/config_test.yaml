@@ -97,4 +97,5 @@ environment:
   tokenizers_parallelism: "true"
   # Reward logging configuration
   reward_log_sample_rate: "5"  # Log every 5 questions for monitoring
-  reward_enable_logging: "true"  # Enable detailed logging of samples
+  reward_enable_logging: "true"  # Enable file logging (needed for validation)
+  reward_enable_console_output: "false"  # Enable console output (disabled by default for performance, enable for debug)

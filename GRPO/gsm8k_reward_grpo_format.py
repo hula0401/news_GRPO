@@ -24,6 +24,7 @@ from __future__ import annotations
 import re
 import os
 import logging
+import time
 from typing import Any, Dict, Optional
 
 # Configure logging
@@ -40,6 +41,7 @@ _log_file_path = str(pathlib.Path.cwd() / "reward_samples.log")
 # Sampling configuration - log every Nth question to avoid spam
 _LOG_SAMPLE_RATE = int(os.getenv("REWARD_LOG_SAMPLE_RATE", "25"))  # Default: log every 25 questions
 _ENABLE_LOGGING = os.getenv("REWARD_ENABLE_LOGGING", "true").lower() == "true"
+_ENABLE_CONSOLE_OUTPUT = os.getenv("REWARD_ENABLE_CONSOLE_OUTPUT", "false").lower() == "true"  # Console output disabled by default for performance
 _call_counter = 0
 _question_cache = {}  # Cache to group samples by question
 
@@ -283,6 +285,7 @@ def compute_score(
     is_correct = 1.0 if correctness >= 2.0 else 0.0
 
     # Log sample outputs periodically for monitoring (every N questions)
+    # File logging is enabled for validation purposes, console output is optional for performance
     if _ENABLE_LOGGING and _call_counter % _LOG_SAMPLE_RATE == 0:
 
         # Truncate long outputs for logging  
@@ -313,21 +316,27 @@ def compute_score(
 
 """
         
-        # Write to file directly (works better with Ray)
+        # Write to file directly (works better with Ray) - always enabled for validation
         try:
             with open(_log_file_path, "a") as f:
                 f.write(log_msg)
                 f.flush()
         except Exception as e:
-            # Try to log the error via print
-            try:
-                import sys
-                print(f"[REWARD LOG ERROR] {e}", file=sys.stderr, flush=True)
-            except:
-                pass
+            # Only log errors if console output is enabled or at debug level
+            if _ENABLE_CONSOLE_OUTPUT or logger.isEnabledFor(logging.DEBUG):
+                try:
+                    import sys
+                    print(f"[REWARD LOG ERROR] {e}", file=sys.stderr, flush=True)
+                except:
+                    pass
         
-        # Also print to stdout (Ray might capture this)
-        print(log_msg, flush=True)
+        # Console output only if explicitly enabled (disabled by default for performance)
+        # Use logger.debug() for debug mode, or check environment variable
+        if _ENABLE_CONSOLE_OUTPUT:
+            print(log_msg, flush=True)
+        elif logger.isEnabledFor(logging.DEBUG):
+            # If logging level is DEBUG, also output to console
+            logger.debug(log_msg)
 
     # Return simple float (VERL handles the rest automatically)
     return total_reward

@@ -59,10 +59,12 @@ def set_environment_variables(config: dict) -> None:
     # Reward logging configuration
     os.environ["REWARD_LOG_SAMPLE_RATE"] = str(env_config.get('reward_log_sample_rate', '25'))
     os.environ["REWARD_ENABLE_LOGGING"] = str(env_config.get('reward_enable_logging', 'true'))
+    os.environ["REWARD_ENABLE_CONSOLE_OUTPUT"] = str(env_config.get('reward_enable_console_output', 'false'))
 
     logger.info("Environment variables configured")
     logger.info(f"  - Reward logging: {'enabled' if env_config.get('reward_enable_logging', 'true').lower() == 'true' else 'disabled'}")
     logger.info(f"  - Log sample rate: every {env_config.get('reward_log_sample_rate', '25')} questions")
+    logger.info(f"  - Console output: {'enabled' if env_config.get('reward_enable_console_output', 'false').lower() == 'true' else 'disabled (file logging only for performance)'}")
 
 
 def build_training_command(config: dict) -> list[str]:

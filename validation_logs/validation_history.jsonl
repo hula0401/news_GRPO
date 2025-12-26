@@ -126,3 +126,12 @@
 {"n_samples": 5958, "n_questions": 84, "accuracy": 0.24169184290030213, "pass@1": 0.0, "pass@5": 0.5283922154262772, "correct_samples": 1440, "avg_samples_per_question": 70.92857142857143, "step": "final"}
 {"n_samples": 256, "n_questions": 32, "accuracy": 0.26171875, "pass@1": 0.3125, "pass@5": 0.6021205357142857, "correct_samples": 67, "avg_samples_per_question": 8.0, "step": "final"}
 {"n_samples": 256, "n_questions": 32, "accuracy": 0.29296875, "pass@1": 0.375, "pass@5": 0.6786334325396826, "correct_samples": 75, "avg_samples_per_question": 8.0, "step": "final"}
+{"n_samples": 1320, "n_questions": 165, "accuracy": 0.4590909090909091, "pass@1": 0.6121212121212121, "pass@5": 0.81497113997114, "correct_samples": 606, "avg_samples_per_question": 8.0, "step": 20}
+{"n_samples": 2497, "n_questions": 312, "accuracy": 0.5686824189026832, "pass@1": 0.7083333333333334, "pass@5": 0.8909111721611722, "correct_samples": 1420, "avg_samples_per_question": 8.003205128205128, "step": 40}
+{"n_samples": 3672, "n_questions": 459, "accuracy": 0.6143790849673203, "pass@1": 0.7690631808278867, "pass@5": 0.9167055711173359, "correct_samples": 2256, "avg_samples_per_question": 8.0, "step": 60}
+{"n_samples": 4846, "n_questions": 606, "accuracy": 0.638671068922823, "pass@1": 0.8003300330033003, "pass@5": 0.9305621038294306, "correct_samples": 3095, "avg_samples_per_question": 7.996699669966997, "step": 80}
+{"n_samples": 6013, "n_questions": 752, "accuracy": 0.6570763346083486, "pass@1": 0.824468085106383, "pass@5": 0.9393891421816954, "correct_samples": 3951, "avg_samples_per_question": 7.996010638297872, "step": 100}
+{"n_samples": 7185, "n_questions": 899, "accuracy": 0.6807237299930411, "pass@1": 0.8431590656284761, "pass@5": 0.9487503751964265, "correct_samples": 4891, "avg_samples_per_question": 7.992213570634038, "step": 120}
+{"n_samples": 8367, "n_questions": 1046, "accuracy": 0.6908091311103143, "pass@1": 0.8527724665391969, "pass@5": 0.952906385626271, "correct_samples": 5780, "avg_samples_per_question": 7.999043977055449, "step": 140}
+{"n_samples": 9551, "n_questions": 1193, "accuracy": 0.6966809758140509, "pass@1": 0.8600167644593462, "pass@5": 0.9569978312643862, "correct_samples": 6654, "avg_samples_per_question": 8.005867560771165, "step": 160}
+{"n_samples": 10729, "n_questions": 1340, "accuracy": 0.7059371796066735, "pass@1": 0.8686567164179104, "pass@5": 0.9604670101871595, "correct_samples": 7574, "avg_samples_per_question": 8.006716417910448, "step": 180}
