@@ -16,6 +16,7 @@ debug*.log
 # large data files
 outputs/
 checkpoints/
+ckpt/
 wandb/
 
 # carsh files

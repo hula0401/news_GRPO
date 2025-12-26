@@ -115,6 +115,7 @@ def build_training_command(config: dict) -> list[str]:
         f"actor_rollout_ref.actor.ppo_mini_batch_size={actor_cfg['ppo_mini_batch_size']}",
         f"actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu={actor_cfg['ppo_micro_batch_size_per_gpu']}",
         f"actor_rollout_ref.actor.ppo_epochs={actor_cfg['ppo_epochs']}",
+        f"++actor_rollout_ref.actor.entropy_coeff={actor_cfg.get('entropy_coeff', 0.0)}",
 
         # Hardware configuration
         f"trainer.n_gpus_per_node={trainer_cfg['n_gpus_per_node']}",
@@ -131,6 +132,7 @@ def build_training_command(config: dict) -> list[str]:
 
         # Validation settings
         f"trainer.val_before_train={str(trainer_cfg.get('val_before_train', False)).lower()}",
+        f"trainer.test_freq={trainer_cfg.get('val_interval', 0)}",  # VERL uses test_freq for periodic validation
 
         # Optimization settings
         f"++trainer.mixed_precision={trainer_cfg['mixed_precision']}",

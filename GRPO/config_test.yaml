@@ -59,11 +59,11 @@ reward:
 trainer:
   n_gpus_per_node: 1
   nnodes: 1
-  total_epochs: 1  # Only 1 epoch for testing
-  save_freq: 0  # Disable checkpointing for test
+  total_epochs: 5  # Only 1 epoch for testing
+  save_freq: 5  # Save checkpoint every 5 steps for testing
   mixed_precision: "bfloat16"
-  val_before_train: false  # Disable VERL's built-in validation (use custom validation plugin instead)
-  val_interval: 999999  # Disable VERL's built-in validation (use custom validation plugin)
+  val_before_train: true    # Run validation before training starts
+  val_interval: 1  # Run validation every N steps (set to 0 to disable VERL validation)
   
   # Pass@k validation plugin (runs in background, logs to wandb)
   validation:
@@ -81,7 +81,7 @@ trainer:
   logger: ['console', 'wandb']  # Console and wandb for monitoring
   project_name: "qwen-grpo-test"
   experiment_name: "qwen-grpo-test"  # Timestamp will be added automatically
-  default_local_dir: "checkpoints/test"
+  default_local_dir: "ckpt/grpo"  # Checkpoint directory
 
   # Wandb configuration (automatically enabled if WANDB_API_KEY is set)
   wandb:

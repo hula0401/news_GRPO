@@ -40,6 +40,7 @@ actor:
   ppo_mini_batch_size: 1  # Total mini-batch size (A100: 32, 3090: 8)
   ppo_micro_batch_size_per_gpu: 1  # Per-GPU micro-batch (adjust for memory)
   ppo_epochs: 1  # PPO epochs per batch (GRPO typically uses 1)
+  entropy_coeff: 0.01  # Entropy bonus to encourage exploration (prevents mode collapse)
 
 # Algorithm Configuration
 algorithm:
@@ -55,11 +56,11 @@ trainer:
   n_gpus_per_node: 1  # Number of GPUs to use
   nnodes: 1  # Number of nodes (for distributed training)
   total_epochs: 3  # Number of training epochs
-  save_freq: 0  # Save checkpoint every N steps
+  save_freq: 5  # Save checkpoint every N steps (0 = disable)
 
-  # Validation settings
-  val_before_train: false  # Run validation before training starts
-  val_interval: 0  # Run validation every N steps
+  # Validation settings  
+  val_before_train: true  # Run validation before training starts
+  val_interval: 5  # Run validation every N steps (maps to VERL's test_freq internally)
   
   # Pass@k validation plugin (runs in background, logs to wandb)
   validation:
@@ -78,7 +79,7 @@ trainer:
   logger: ['console', 'wandb']  # Logger types (console and wandb)
   project_name: "qwen-grpo-gsm8k"
   experiment_name: "qwen-grpo-gsm8k"  # Timestamp will be added automatically (e.g., qwen-grpo-gsm8k-Dec241255)
-  default_local_dir: "checkpoints/qwen-grpo-gsm8k"
+  default_local_dir: "ckpt/grpo"  # Checkpoint directory
 
   # Wandb configuration
   wandb:

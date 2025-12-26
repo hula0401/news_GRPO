@@ -12,11 +12,11 @@ final answer
 
 Reward components:
 1. correctness_reward: 2.0 for exact match, partial credit for close answers
-2. digit_reward: Up to 0.5 for presence of numbers
+2. digit_reward: Up to 0.1 for presence of numbers (UPDATED: reduced from 0.5)
 3. hard_format_reward: Up to 0.6 for proper XML structure
 4. mark_reward: Up to 0.5 for proper XML tags
 
-Total possible reward: ~3.6 (correctness + format rewards)
+Total possible reward: ~3.2 (correctness + format rewards)
 """
 
 from __future__ import annotations
@@ -134,7 +134,7 @@ def digit_reward_component(response: str) -> float:
     Returns
     -------
     float
-        Reward in [0.0, 0.5]
+        Reward in [0.0, 0.1]
     """
     extracted_response = extract_answer(response)
 
@@ -142,7 +142,7 @@ def digit_reward_component(response: str) -> float:
     numbers = re.findall(r'\d+', extracted_response)
     if numbers:
         # Give more reward for more numbers (shows more reasoning)
-        reward = min(0.5, len(numbers) * 0.1)
+        reward = min(0.1, len(numbers) * 0.1)
         return reward
     else:
         return 0.0
@@ -230,11 +230,11 @@ def compute_score(
 
     This combines all four reward components with equal weighting (weights=1.0 each):
     - correctness_reward: 2.0 max (main signal)
-    - digit_reward: 0.5 max
+    - digit_reward: 0.1 max (UPDATED: reduced from 0.5)
     - hard_format_reward: 0.6 max
     - mark_reward: 0.5 max
 
-    Total possible reward: ~3.6
+    Total possible reward: ~3.2 (UPDATED from ~3.6)
 
     Parameters
     ----------
@@ -250,7 +250,7 @@ def compute_score(
     Returns
     -------
     float
-        Combined reward score
+        Combined reward score (0-3.2)
     """
     global _call_counter
     _call_counter += 1
@@ -273,10 +273,13 @@ def compute_score(
 
     # Combine with equal weights (all weights = 1.0 in original implementation)
     total_reward = correctness + digit + hard_format + mark
+    
+    # Compute binary accuracy for logging only
+    extracted = extract_answer(solution_str)
+    is_correct = 1.0 if extracted == str(ground_truth) else 0.0
 
     # Log sample outputs periodically for monitoring (every N questions)
     if _ENABLE_LOGGING and _call_counter % _LOG_SAMPLE_RATE == 0:
-        extracted = extract_answer(solution_str)
 
         # Truncate long outputs for logging  
         display_output = solution_str[:500] + "..." if len(solution_str) > 500 else solution_str
@@ -294,10 +297,11 @@ def compute_score(
 {"-" * 100}
 📈 REWARD BREAKDOWN:
    • Correctness:  {correctness:5.2f} / 2.00  {'✓' if correctness >= 2.0 else '✗'}
-   • Digit:        {digit:5.2f} / 0.50  {'✓' if digit >= 0.3 else '○'}
+   • Digit:        {digit:5.2f} / 0.10  {'✓' if digit >= 0.05 else '○'}
    • Format:       {hard_format:5.2f} / 0.60  {'✓' if hard_format >= 0.5 else '○'}
    • Mark:         {mark:5.2f} / 0.50  {'✓' if mark >= 0.4 else '○'}
-   • TOTAL REWARD: {total_reward:5.2f} / 3.60
+   • TOTAL REWARD: {total_reward:5.2f} / 3.20
+   • ACCURACY:     {is_correct:5.2f} (Binary)
 {"-" * 100}
 📝 FULL MODEL OUTPUT:
 {display_output}
@@ -355,4 +359,5 @@ def compute_score(
         except (ImportError, Exception):
             pass  # Wandb not available or not initialized
 
+    # Return simple float (VERL handles the rest automatically)
     return total_reward
