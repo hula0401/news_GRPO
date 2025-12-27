@@ -12,14 +12,15 @@ EVENT-BASED news refers to articles reporting specific, concrete events includin
 NOT EVENT-BASED news includes general market commentary and analysis, opinion pieces and predictions, sector trends without specific events, historical retrospectives.
 Format your response as:
 <think>
-[Analyze the news content step by step. Consider: What is the main subject? Is there a specific event? Is this news or commentary?]
+[put ALL your reasoning here. Consider: What is the main subject? Is there a specific event?]
 </think>
 <answer>
-[true/false - true if event-based, false if not event-based]
+[true/false - true if event-based, false if not]
 </answer>
 
 Example:
 1. News: "Apple announces record Q4 earnings, beating analyst expectations with $90B revenue"
+Answer:
 <think>
 This article reports a specific event - Apple's Q4 earnings announcement.
 </think>
@@ -28,6 +29,7 @@ true
 </answer>
 
 2. News: "10 stocks to buy now including Tesla and Apple"
+Answer:
 <think>
 This article is a generic list of stocks to buy, not a specific event.
 </think>

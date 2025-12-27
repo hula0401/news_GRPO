@@ -139,3 +139,4 @@
 {"n_samples": 10825, "n_questions": 1352, "accuracy": 0.7071593533487298, "pass@1": 0.8690828402366864, "pass@5": 0.9608178947121255, "correct_samples": 7655, "avg_samples_per_question": 8.006656804733728, "step": "final"}
 {"n_samples": 0, "n_questions": 0, "pass@1": 0.0, "pass@5": 0.0, "accuracy": 0.0, "step": "final"}
 {"n_samples": 0, "n_questions": 0, "pass@1": 0.0, "pass@5": 0.0, "accuracy": 0.0, "step": "final"}
+{"n_samples": 0, "n_questions": 0, "pass@1": 0.0, "pass@5": 0.0, "accuracy": 0.0, "step": "final"}
